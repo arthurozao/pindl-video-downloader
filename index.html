@@ -432,19 +432,19 @@
                         }
 
                         const patterns = [
-                            /\"video_list\":{\"V_720P\":{\"url\":\"([^\"]+)\"/,
-                            /\"videos\":{\"video_list\":{\"V_720P\":{\"url\":\"([^\"]+)\"/,
-                            /\"videoUrl\":\"([^\"]+\.mp4[^\"]*)\"/,
-                            /https:\\\/\\\/[^\"]*\.pinimg\.com\\\/[^\"]*\.mp4/,
-                            /\"contentUrl\":\"([^\"]+\.mp4[^\"]*)\"/
+                            /"video_list":\{"V_720P":\{"url":"([^"]+)"/,
+                            /"videos":\{"video_list":\{"V_720P":\{"url":"([^"]+)"/,
+                            /"videoUrl":"([^"]+\.mp4[^"]*)"/,
+                            /https:\/\/[\w\.\/]+\.mp4/,
+                            /"contentUrl":"([^"]+\.mp4[^"]*)"/
                         ];
 
                         for (const pattern of patterns) {
                             const match = html.match(pattern);
-                            if (match && match[1]) {
-                                videoUrl = match[1]
+                            if (match) {
+                                videoUrl = (match[1] || match[0])
                                     .replace(/\\u002F/g, '/')
-                                    .replace(/\\\\\//g, '/')
+                                    .replace(/\\\//g, '/')
                                     .replace(/\\/g, '');
                                 break;
                             }
@@ -464,7 +464,8 @@
                     downloadBtn.href = videoUrl;
                     showResult();
                 } else {
-                    showError('Não achei vídeo nesse pin. Tem certeza que é um pin de vídeo?');
+                    // Tenta Cobalt como fallback para Pinterest
+                    await fetchCobalt(url);
                 }
             } catch (err) {
                 showError('Erro ao processar Pinterest. Tente novamente.');
