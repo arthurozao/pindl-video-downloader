@@ -262,11 +262,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 18px 40px;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .download-btn:hover {
             background: var(--accent);
             color: var(--text);
+            box-shadow: 0 8px 25px var(--accent-glow);
         }
 
         .error {
@@ -358,15 +366,17 @@
         const fetchBtn = document.getElementById('fetchBtn');
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
+        const result = document.getElementById('result');
         const videoPreview = document.getElementById('videoPreview');
         const downloadBtn = document.getElementById('downloadBtn');
-        const result = document.getElementById('result');
 
         const cobaltInstances = [
             'https://cobalt-api.meowing.de',
             'https://cobalt-backend.canine.tools',
             'https://kityune.imput.net',
-            'https://blossom.imput.net'
+            'https://blossom.imput.net',
+            'https://cobalt-api.kwiatekmiki.com',
+            'https://capi.3kh0.net'
         ];
 
         fetchBtn.addEventListener('click', fetchVideo);
@@ -388,6 +398,7 @@
             fetchBtn.disabled = true;
 
             let success = false;
+            let lastError = '';
 
             for (const instance of cobaltInstances) {
                 try {
@@ -400,9 +411,15 @@
                         body: JSON.stringify({
                             url: url,
                             videoQuality: '1080',
-                            filenameStyle: 'basic'
+                            filenameStyle: 'basic',
+                            downloadMode: 'auto'
                         })
                     });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.text || `HTTP ${response.status}`);
+                    }
 
                     const data = await response.json();
 
@@ -413,22 +430,24 @@
                         success = true;
                         break;
                     } else if (data.status === 'picker') {
-                        // For slideshows/multiple items, just take the first one for simplicity
                         const firstItem = data.picker[0];
                         videoPreview.src = firstItem.url;
                         downloadBtn.href = firstItem.url;
                         showResult();
                         success = true;
                         break;
+                    } else if (data.status === 'error') {
+                        throw new Error(data.text || 'Erro desconhecido na API');
                     }
                 } catch (err) {
                     console.error(`Instance ${instance} failed:`, err);
+                    lastError = err.message;
                     continue;
                 }
             }
 
             if (!success) {
-                showError('Não foi possível processar este link. Tente outro ou verifique se o vídeo é público.');
+                showError(lastError || 'Não foi possível processar este link. Tente outro ou verifique se o vídeo é público.');
             }
 
             hideLoading();
