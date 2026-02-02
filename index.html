@@ -397,6 +397,82 @@
             showLoading();
             fetchBtn.disabled = true;
 
+            // Se for Pinterest, usa a lógica original
+            if (url.includes('pinterest.com') || url.includes('pin.it')) {
+                await fetchPinterest(url);
+            } else {
+                await fetchCobalt(url);
+            }
+
+            hideLoading();
+            fetchBtn.disabled = false;
+        }
+
+        async function fetchPinterest(url) {
+            try {
+                const proxies = [
+                    'https://api.allorigins.win/get?url=',
+                    'https://corsproxy.io/?',
+                    'https://api.codetabs.com/v1/proxy?quest='
+                ];
+
+                let success = false;
+                let videoUrl = null;
+
+                for (const proxy of proxies) {
+                    try {
+                        const proxyUrl = proxy + encodeURIComponent(url);
+                        const response = await fetch(proxyUrl);
+                        let html;
+
+                        if (proxy.includes('allorigins')) {
+                            const data = await response.json();
+                            html = data.contents;
+                        } else {
+                            html = await response.text();
+                        }
+
+                        const patterns = [
+                            /"video_list":\{"V_720P":\{"url":"([^"]+)"/,
+                            /"videos":\{"video_list":\{"V_720P":\{"url":"([^"]+)"/,
+                            /"videoUrl":"([^"]+\.mp4[^"]*)"/,
+                            /https:\\\/\\\/[^"]*\.pinimg\.com\\\/[^"]*\.mp4/,
+                            /"contentUrl":"([^"]+\.mp4[^"]*)"/
+                        ];
+
+                        for (const pattern of patterns) {
+                            const match = html.match(pattern);
+                            if (match && match[1]) {
+                                videoUrl = match[1]
+                                    .replace(/\\u002F/g, '/')
+                                    .replace(/\\\//g, '/')
+                                    .replace(/\\/g, '');
+                                break;
+                            }
+                        }
+
+                        if (videoUrl) {
+                            success = true;
+                            break;
+                        }
+                    } catch (proxyErr) {
+                        continue;
+                    }
+                }
+
+                if (success && videoUrl) {
+                    videoPreview.src = videoUrl;
+                    downloadBtn.href = videoUrl;
+                    showResult();
+                } else {
+                    showError('Não achei vídeo nesse pin. Tem certeza que é um pin de vídeo?');
+                }
+            } catch (err) {
+                showError('Erro ao processar Pinterest. Tente novamente.');
+            }
+        }
+
+        async function fetchCobalt(url) {
             let success = false;
             let lastError = '';
 
@@ -437,21 +513,17 @@
                         success = true;
                         break;
                     } else if (data.status === 'error') {
-                        throw new Error(data.text || 'Erro desconhecido na API');
+                        throw new Error(data.text || 'Erro na API');
                     }
                 } catch (err) {
-                    console.error(`Instance ${instance} failed:`, err);
                     lastError = err.message;
                     continue;
                 }
             }
 
             if (!success) {
-                showError(lastError || 'Não foi possível processar este link. Tente outro ou verifique se o vídeo é público.');
+                showError(lastError || 'Não foi possível processar este link. Tente outro.');
             }
-
-            hideLoading();
-            fetchBtn.disabled = false;
         }
 
         function showLoading() {
