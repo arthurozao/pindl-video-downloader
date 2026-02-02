@@ -397,78 +397,75 @@
             showLoading();
             fetchBtn.disabled = true;
 
-            if (url.includes('pinterest.com') || url.includes('pin.it')) {
-                await fetchPinterest(url);
-            } else {
-                await fetchCobalt(url);
-            }
-
-            hideLoading();
-            fetchBtn.disabled = false;
-        }
-
-        async function fetchPinterest(url) {
             try {
-                const proxies = [
-                    'https://api.allorigins.win/get?url=',
-                    'https://corsproxy.io/?',
-                    'https://api.codetabs.com/v1/proxy?quest='
-                ];
-
-                let success = false;
-                let videoUrl = null;
-
-                for (const proxy of proxies) {
-                    try {
-                        const proxyUrl = proxy + encodeURIComponent(url);
-                        const response = await fetch(proxyUrl);
-                        let html;
-
-                        if (proxy.includes('allorigins')) {
-                            const data = await response.json();
-                            html = data.contents;
-                        } else {
-                            html = await response.text();
-                        }
-
-                        const patterns = [
-                            /"video_list":\{"V_720P":\{"url":"([^"]+)"/,
-                            /"videos":\{"video_list":\{"V_720P":\{"url":"([^"]+)"/,
-                            /"videoUrl":"([^"]+\.mp4[^"]*)"/,
-                            /https:\/\/[\w\.\/]+\.mp4/,
-                            /"contentUrl":"([^"]+\.mp4[^"]*)"/
-                        ];
-
-                        for (const pattern of patterns) {
-                            const match = html.match(pattern);
-                            if (match) {
-                                videoUrl = (match[1] || match[0])
-                                    .replace(/\\u002F/g, '/')
-                                    .replace(/\\\//g, '/')
-                                    .replace(/\\/g, '');
-                                break;
-                            }
-                        }
-
-                        if (videoUrl) {
-                            success = true;
-                            break;
-                        }
-                    } catch (proxyErr) {
-                        continue;
-                    }
-                }
-
-                if (success && videoUrl) {
-                    videoPreview.src = videoUrl;
-                    downloadBtn.href = videoUrl;
-                    showResult();
+                if (url.includes('pinterest.com') || url.includes('pin.it')) {
+                    await fetchPinterest(url);
                 } else {
-                    // Tenta Cobalt como fallback para Pinterest
                     await fetchCobalt(url);
                 }
             } catch (err) {
-                showError('Erro ao processar Pinterest. Tente novamente.');
+                showError(err.message || 'Erro ao processar o link.');
+            } finally {
+                hideLoading();
+                fetchBtn.disabled = false;
+            }
+        }
+
+        async function fetchPinterest(url) {
+            const proxies = [
+                'https://api.allorigins.win/get?url=',
+                'https://corsproxy.io/?',
+                'https://api.codetabs.com/v1/proxy?quest='
+            ];
+
+            let videoUrl = null;
+
+            for (const proxy of proxies) {
+                try {
+                    const proxyUrl = proxy + encodeURIComponent(url);
+                    const response = await fetch(proxyUrl);
+                    let html;
+
+                    if (proxy.includes('allorigins')) {
+                        const data = await response.json();
+                        html = data.contents;
+                    } else {
+                        html = await response.text();
+                    }
+
+                    // Regex mais abrangente para capturar URLs de vídeo do Pinterest
+                    const patterns = [
+                        /"video_list":\s*\{"V_720P":\s*\{"url":\s*"([^"]+)"/,
+                        /"videos":\s*\{"video_list":\s*\{"V_720P":\s*\{"url":\s*"([^"]+)"/,
+                        /"videoUrl":\s*"([^"]+\.mp4[^"]*)"/,
+                        /https:\/\/[\w\.\/-]+\.mp4[\w\.\/\-?=]*/,
+                        /"contentUrl":\s*"([^"]+\.mp4[^"]*)"/
+                    ];
+
+                    for (const pattern of patterns) {
+                        const match = html.match(pattern);
+                        if (match) {
+                            videoUrl = (match[1] || match[0])
+                                .replace(/\\u002F/g, '/')
+                                .replace(/\\\//g, '/')
+                                .replace(/\\/g, '');
+                            break;
+                        }
+                    }
+
+                    if (videoUrl) break;
+                } catch (proxyErr) {
+                    continue;
+                }
+            }
+
+            if (videoUrl) {
+                videoPreview.src = videoUrl;
+                downloadBtn.href = videoUrl;
+                showResult();
+            } else {
+                // Fallback para Cobalt se o scraper falhar
+                await fetchCobalt(url);
             }
         }
 
@@ -489,7 +486,7 @@
 
                     if (!response.ok) {
                         const errData = await response.json().catch(() => ({ text: `HTTP error ${response.status}` }));
-                        throw new Error(errData.text);
+                        throw new Error(errData.text || `Erro HTTP ${response.status}`);
                     }
 
                     const data = await response.json();
@@ -508,7 +505,7 @@
                         success = true;
                         break;
                     } else if (data.status === 'error') {
-                        throw new Error(data.text || 'API returned an error');
+                        throw new Error(data.text || 'API retornou um erro');
                     }
                 } catch (err) {
                     console.error(`Instance ${instance} failed:`, err);
@@ -518,7 +515,7 @@
             }
 
             if (!success) {
-                showError(lastError || 'Could not process this link. Please try another one.');
+                throw new Error(lastError || 'Não foi possível processar este link. Tente outro.');
             }
         }
 
