@@ -397,7 +397,6 @@
             showLoading();
             fetchBtn.disabled = true;
 
-            // Se for Pinterest, usa a lógica original
             if (url.includes('pinterest.com') || url.includes('pin.it')) {
                 await fetchPinterest(url);
             } else {
@@ -433,11 +432,11 @@
                         }
 
                         const patterns = [
-                            /"video_list":\{"V_720P":\{"url":"([^"]+)"/,
-                            /"videos":\{"video_list":\{"V_720P":\{"url":"([^"]+)"/,
-                            /"videoUrl":"([^"]+\.mp4[^"]*)"/,
-                            /https:\\\/\\\/[^"]*\.pinimg\.com\\\/[^"]*\.mp4/,
-                            /"contentUrl":"([^"]+\.mp4[^"]*)"/
+                            /\"video_list\":{\"V_720P\":{\"url\":\"([^\"]+)\"/,
+                            /\"videos\":{\"video_list\":{\"V_720P\":{\"url\":\"([^\"]+)\"/,
+                            /\"videoUrl\":\"([^\"]+\.mp4[^\"]*)\"/,
+                            /https:\\\/\\\/[^\"]*\.pinimg\.com\\\/[^\"]*\.mp4/,
+                            /\"contentUrl\":\"([^\"]+\.mp4[^\"]*)\"/
                         ];
 
                         for (const pattern of patterns) {
@@ -445,7 +444,7 @@
                             if (match && match[1]) {
                                 videoUrl = match[1]
                                     .replace(/\\u002F/g, '/')
-                                    .replace(/\\\//g, '/')
+                                    .replace(/\\\\\//g, '/')
                                     .replace(/\\/g, '');
                                 break;
                             }
@@ -484,17 +483,12 @@
                             'Accept': 'application/json',
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            url: url,
-                            videoQuality: '1080',
-                            filenameStyle: 'basic',
-                            downloadMode: 'auto'
-                        })
+                        body: JSON.stringify({ url })
                     });
 
                     if (!response.ok) {
-                        const errData = await response.json().catch(() => ({}));
-                        throw new Error(errData.text || `HTTP ${response.status}`);
+                        const errData = await response.json().catch(() => ({ text: `HTTP error ${response.status}` }));
+                        throw new Error(errData.text);
                     }
 
                     const data = await response.json();
@@ -513,16 +507,17 @@
                         success = true;
                         break;
                     } else if (data.status === 'error') {
-                        throw new Error(data.text || 'Erro na API');
+                        throw new Error(data.text || 'API returned an error');
                     }
                 } catch (err) {
+                    console.error(`Instance ${instance} failed:`, err);
                     lastError = err.message;
                     continue;
                 }
             }
 
             if (!success) {
-                showError(lastError || 'Não foi possível processar este link. Tente outro.');
+                showError(lastError || 'Could not process this link. Please try another one.');
             }
         }
 
