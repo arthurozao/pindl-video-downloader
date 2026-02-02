@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PINDL - Social Media Video Downloader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --surface: #1a1a1a;
+            --accent: #ff0055;
+            --accent-glow: rgba(255, 0, 85, 0.3);
+            --text: #ffffff;
+            --text-dim: #888888;
+            --border: #333333;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
+                radial-gradient(circle at 20% 50%, rgba(255, 0, 85, 0.1), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 255, 255, 0.05), transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            margin-bottom: 80px;
+            animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: clamp(60px, 12vw, 120px);
+            letter-spacing: 8px;
+            line-height: 0.9;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 14px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border-left: 3px solid var(--accent);
+            padding-left: 15px;
+        }
+
+        .main-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 50px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 18px 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-dim);
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--text);
+            border: none;
+            padding: 18px 40px;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .result {
+            display: none;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .video-preview {
+            width: 100%;
+            max-height: 500px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .download-btn {
+            width: 100%;
+            background: var(--bg);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .download-btn:hover {
+            background: var(--accent);
+            color: var(--text);
+        }
+
+        .error {
+            display: none;
+            padding: 20px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            color: #ff6b6b;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .error.active {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .main-card {
+                padding: 30px 25px;
+            }
+
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PINDL</h1>
+            <p class="tagline">Pinterest, YouTube, Instagram & TikTok Downloader</p>
+        </div>
+
+        <div class="main-card">
+            <div class="input-group">
+                <label for="url">Cole o link do vídeo</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="url" 
+                        placeholder="Cole o link aqui..."
+                    >
+                    <button id="fetchBtn">Buscar</button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <p>[ PROCESSANDO VÍDEO... ]</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="result" id="result">
+                <video class="video-preview" id="videoPreview" controls></video>
+                <a href="#" class="download-btn" id="downloadBtn" target="_blank">Download HD</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            Powered by Cobalt API × Built with Attitude
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('url');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const videoPreview = document.getElementById('videoPreview');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const result = document.getElementById('result');
+
+        const cobaltInstances = [
+            'https://cobalt-api.meowing.de',
+            'https://cobalt-backend.canine.tools',
+            'https://kityune.imput.net',
+            'https://blossom.imput.net'
+        ];
+
+        fetchBtn.addEventListener('click', fetchVideo);
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchVideo();
+        });
+
+        async function fetchVideo() {
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showError('Cole um link válido');
+                return;
+            }
+
+            hideError();
+            hideResult();
+            showLoading();
+            fetchBtn.disabled = true;
+
+            let success = false;
+
+            for (const instance of cobaltInstances) {
+                try {
+                    const response = await fetch(instance, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            url: url,
+                            videoQuality: '1080',
+                            filenameStyle: 'basic'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'redirect' || data.status === 'tunnel') {
+                        videoPreview.src = data.url;
+                        downloadBtn.href = data.url;
+                        showResult();
+                        success = true;
+                        break;
+                    } else if (data.status === 'picker') {
+                        // For slideshows/multiple items, just take the first one for simplicity
+                        const firstItem = data.picker[0];
+                        videoPreview.src = firstItem.url;
+                        downloadBtn.href = firstItem.url;
+                        showResult();
+                        success = true;
+                        break;
+                    }
+                } catch (err) {
+                    console.error(`Instance ${instance} failed:`, err);
+                    continue;
+                }
+            }
+
+            if (!success) {
+                showError('Não foi possível processar este link. Tente outro ou verifique se o vídeo é público.');
+            }
+
+            hideLoading();
+            fetchBtn.disabled = false;
+        }
+
+        function showLoading() {
+            loading.classList.add('active');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+
+        function showResult() {
+            result.classList.add('active');
+        }
+
+        function hideResult() {
+            result.classList.remove('active');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('active');
+        }
+
+        function hideError() {
+            error.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
